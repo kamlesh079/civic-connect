@@ -11,6 +11,9 @@ import { CitizenDashboard } from './pages/citizen/Dashboard';
 import { CitizenIssueList } from './pages/citizen/IssueList';
 import { CitizenIssueDetails } from './pages/citizen/IssueDetails';
 import { ReportIssue } from './pages/citizen/ReportIssue';
+import { OfficerDashboard } from './pages/officer/Dashboard';
+import { OfficerIssueList } from './pages/officer/IssueList';
+import { OfficerIssueDetails } from './pages/officer/IssueDetails';
 
 // Placeholder Pages for future phases
 const PlaceholderPage = ({ title }) => (
@@ -47,9 +50,10 @@ function App() {
           <Route path="/dashboard" element={<Navigate to="/citizen/dashboard" replace />} />
 
             {/* Officer Routes */}
-            <Route element={<RoleRoute allowedRoles={['Officer']} />}>
-              <Route path="/officer/dashboard" element={<PlaceholderPage title="Officer Dashboard" />} />
-              <Route path="/officer/issues" element={<PlaceholderPage title="Assigned Issues" />} />
+            <Route element={<RoleRoute allowedRoles={['Officer', 'Admin']} />}>
+              <Route path="/officer/dashboard" element={<OfficerDashboard />} />
+              <Route path="/officer/issues" element={<OfficerIssueList />} />
+              <Route path="/officer/issues/:id" element={<OfficerIssueDetails />} />
             </Route>
 
             {/* Admin Routes */}

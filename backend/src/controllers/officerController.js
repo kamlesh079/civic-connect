@@ -1,6 +1,46 @@
 const Issue = require('../models/Issue');
 const AppError = require('../utils/AppError');
 
+// @desc    Get dashboard statistics for logged-in officer
+// @route   GET /api/officer/stats
+// @access  Private (Officer)
+exports.getDashboardStats = async (req, res, next) => {
+  try {
+    const officerId = req.user.id;
+
+    const totalAssigned = await Issue.countDocuments({
+      assignedOfficer: officerId
+    });
+
+    const pending = await Issue.countDocuments({
+      assignedOfficer: officerId,
+      status: 'Assigned'
+    });
+
+    const inProgress = await Issue.countDocuments({
+      assignedOfficer: officerId,
+      status: 'In Progress'
+    });
+
+    const resolved = await Issue.countDocuments({
+      assignedOfficer: officerId,
+      status: 'Resolved'
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalAssigned,
+        pending,
+        inProgress,
+        resolved
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get issues assigned to the logged-in officer
 // @route   GET /api/officer/issues
 // @access  Private (Officer)
