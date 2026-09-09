@@ -13,19 +13,37 @@ export const Login = () => {
 
   // Handle role-based redirect after successful login
   useEffect(() => {
-    if (user) {
-      const from = location.state?.from?.pathname;
-      if (from && from !== '/login') {
-        navigate(from, { replace: true });
-      } else if (user.role === 'Admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else if (user.role === 'Officer') {
-        navigate('/officer/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    }
-  }, [user, navigate, location]);
+  if (!user) return;
+
+  const from = location.state?.from?.pathname;
+
+  const citizenRoutes = ['/citizen'];
+  const officerRoutes = ['/officer'];
+  const adminRoutes = ['/admin'];
+
+  const canAccessFrom =
+    (user.role === 'Citizen' &&
+      citizenRoutes.some((route) => from?.startsWith(route))) ||
+    (user.role === 'Officer' &&
+      officerRoutes.some((route) => from?.startsWith(route))) ||
+    (user.role === 'Admin' &&
+      (adminRoutes.some((route) => from?.startsWith(route)) ||
+        citizenRoutes.some((route) => from?.startsWith(route)) ||
+        officerRoutes.some((route) => from?.startsWith(route))));
+
+  if (from && canAccessFrom) {
+    navigate(from, { replace: true });
+    return;
+  }
+
+  if (user.role === 'Admin') {
+    navigate('/admin/dashboard', { replace: true });
+  } else if (user.role === 'Officer') {
+    navigate('/officer/dashboard', { replace: true });
+  } else {
+    navigate('/citizen/dashboard', { replace: true });
+  }
+}, [user, navigate, location]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
