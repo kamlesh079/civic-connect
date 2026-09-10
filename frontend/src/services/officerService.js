@@ -13,8 +13,13 @@ export const officerService = {
     const { data } = await api.get(`/officer/issues/${id}`);
     return data;
   },
-  updateIssue: async (id, updateData) => {
-    const { data } = await api.put(`/officer/issues/${id}`, updateData);
-    return data;
-  }
+  updateIssueStatus: async (id, status, remarks = '') => {
+  const { data } = await api.patch(`/officer/issues/${id}/status`, {status, remarks });
+  return data;
+},
+
+resolveIssue: async (id, remarks, imageUrl = null) => {
+  const { data } = await api.patch(`/officer/issues/${id}/resolve`, { remarks, imageUrl });
+  return data;
+}
 };

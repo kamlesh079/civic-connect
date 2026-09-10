@@ -34,22 +34,42 @@ export const OfficerIssueDetails = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+
     if (status === 'Resolved' && !remarks.trim()) {
       toast.error('Please provide resolution remarks before resolving the issue.');
       return;
     }
 
     setIsUpdating(true);
+
     try {
-      const payload = { 
-        status, 
-        resolutionDetails: { remarks: remarks } 
-      };
-      const res = await officerService.updateIssue(id, payload);
+      let res;
+
+      if (status === 'Resolved') {
+        // Resolved has its own backend endpoint
+        res = await officerService.resolveIssue(id, remarks.trim());
+      } else {
+        // Assigned / In Progress use the status endpoint
+        res = await officerService.updateIssueStatus(
+          id,
+          status,
+          remarks.trim()
+        );
+      }
+
       setIssue(res.data);
+      setStatus(res.data.status);
+      setRemarks(res.data.resolutionDetails?.remarks || '');
+
       toast.success('Issue updated successfully');
     } catch (error) {
-      toast.error('Failed to update issue');
+      console.error('Update issue error:', error);
+
+      toast.error(
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Failed to update issue'
+      );
     } finally {
       setIsUpdating(false);
     }
