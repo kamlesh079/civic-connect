@@ -55,11 +55,39 @@ exports.updateUser = async (req, res, next) => {
       return next(new AppError('You cannot deactivate your own admin account', 400));
     }
 
-    if (role) user.role = role;
-    if (isActive !== undefined) user.isActive = isActive;
-    if (department !== undefined) user.department = department;
+  const updateData = {};
 
-    await user.save();
+  if (role !== undefined) {
+    updateData.role = role;
+  }
+
+  if (isActive !== undefined) {
+    updateData.isActive = isActive;
+  }
+
+  if (department !== undefined) {
+    updateData.department = department;
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.params.id,
+    updateData,
+    {
+      new: true,
+      runValidators: true
+    }
+  );
+
+  if (!updatedUser) {
+    return next(
+      new AppError(`No user found with id ${req.params.id}`, 404)
+    );
+  }
+
+  res.status(200).json({
+    success: true,
+    data: updatedUser
+  });
 
     res.status(200).json({
       success: true,
