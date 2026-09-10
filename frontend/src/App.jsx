@@ -7,13 +7,20 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { Unauthorized } from './pages/auth/Unauthorized';
+
 import { CitizenDashboard } from './pages/citizen/Dashboard';
 import { CitizenIssueList } from './pages/citizen/IssueList';
 import { CitizenIssueDetails } from './pages/citizen/IssueDetails';
 import { ReportIssue } from './pages/citizen/ReportIssue';
+
 import { OfficerDashboard } from './pages/officer/Dashboard';
 import { OfficerIssueList } from './pages/officer/IssueList';
 import { OfficerIssueDetails } from './pages/officer/IssueDetails';
+
+import AdminDashboard from './pages/admin/Dashboard';
+import AdminIssues from './pages/admin/AdminIssues';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminCategories from './pages/admin/AdminCategories';
 
 // Placeholder Pages for future phases
 const PlaceholderPage = ({ title }) => (
@@ -27,7 +34,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Toaster position="top-right" />
+        <Toaster position="top-center" toastOptions={{ duration: 3000}}/>
         
         <Routes>
           {/* Public Routes */}
@@ -58,10 +65,11 @@ function App() {
 
             {/* Admin Routes */}
             <Route element={<RoleRoute allowedRoles={['Admin']} />}>
-              <Route path="/admin/dashboard" element={<PlaceholderPage title="Admin Analytics Dashboard" />} />
-              <Route path="/admin/users" element={<PlaceholderPage title="User Management" />} />
-              <Route path="/admin/issues" element={<PlaceholderPage title="Global Issue Queue" />} />
-              <Route path="/admin/categories" element={<PlaceholderPage title="Manage Categories" />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/issues" element={<AdminIssues />} />
+              <Route path="/admin/users" element={<AdminUsers defaultRole="" />} />
+              <Route path="/admin/officers" element={<AdminUsers defaultRole="Officer" />} />
+              <Route path="/admin/categories" element={<AdminCategories />} />
             </Route>
 
           </Route>

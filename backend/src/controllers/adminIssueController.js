@@ -1,5 +1,6 @@
 const Issue = require('../models/Issue');
 const AppError = require('../utils/AppError');
+const User = require('../models/User');
 
 // @desc    Get all issues system-wide
 // @route   GET /api/admin/issues
@@ -115,24 +116,43 @@ exports.updatePriority = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getIssueStats = async (req, res, next) => {
   try {
-    // MongoDB Aggregation to get counts by status
-    const statusStats = await Issue.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } }
+    const [
+      totalIssues,
+      resolvedIssues,
+      totalUsers,
+      totalOfficers,
+      criticalIssues
+    ] = await Promise.all([
+      Issue.countDocuments(),
+
+      Issue.countDocuments({
+        status: 'Resolved'
+      }),
+
+      User.countDocuments(),
+
+      User.countDocuments({
+        role: 'Officer'
+      }),
+
+      Issue.countDocuments({
+        priority: 'Critical'
+      })
     ]);
 
-    // Format the array into a clean object (e.g., { "Resolved": 10, "Submitted": 5 })
-    const formattedStatusStats = statusStats.reduce((acc, curr) => {
-      acc[curr._id] = curr.count;
-      return acc;
-    }, {});
-
-    const totalIssues = await Issue.countDocuments();
+    const pendingIssues = await Issue.countDocuments({
+      status: { $ne: 'Resolved' }
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        total: totalIssues,
-        byStatus: formattedStatusStats
+        totalUsers,
+        totalOfficers,
+        totalIssues,
+        pendingIssues,
+        resolvedIssues,
+        criticalIssues
       }
     });
   } catch (error) {
