@@ -1,10 +1,13 @@
 const express = require('express');
+
 const {
   getAllIssues,
+  getIssueDetails,
   assignOfficer,
   updatePriority,
-  getIssueStats
-} = require('../controllers/adminIssueController');
+  getIssueStats,
+} = require("../controllers/adminIssueController");
+
 const { protect, authorize } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -12,8 +15,10 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('Admin'));
 
-router.get('/', getAllIssues);
-router.get('/stats', getIssueStats);
+router.get("/", getAllIssues);
+router.get("/stats", getIssueStats);
+router.get("/:id", getIssueDetails);
+
 router.patch('/:id/assign', assignOfficer);
 router.patch('/:id/priority', updatePriority);
 

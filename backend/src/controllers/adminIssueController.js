@@ -1,6 +1,6 @@
-const Issue = require('../models/Issue');
-const AppError = require('../utils/AppError');
-const User = require('../models/User');
+const Issue = require("../models/Issue");
+const AppError = require("../utils/AppError");
+const User = require("../models/User");
 
 // @desc    Get all issues system-wide
 // @route   GET /api/admin/issues
@@ -15,15 +15,16 @@ exports.getAllIssues = async (req, res, next) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.priority) filter.priority = req.query.priority;
     if (req.query.category) filter.category = req.query.category;
-    if (req.query.assignedOfficer) filter.assignedOfficer = req.query.assignedOfficer;
+    if (req.query.assignedOfficer)
+      filter.assignedOfficer = req.query.assignedOfficer;
 
     const issues = await Issue.find(filter)
-      .populate('category', 'name')
-      .populate('reportedBy', 'name email')
-      .populate('assignedOfficer', 'name department')
+      .populate("category", "name")
+      .populate("reportedBy", "name email")
+      .populate("assignedOfficer", "name department")
       .skip(startIndex)
       .limit(limit)
-      .sort('-createdAt');
+      .sort("-createdAt");
 
     const total = await Issue.countDocuments(filter);
 
@@ -31,23 +32,59 @@ exports.getAllIssues = async (req, res, next) => {
       success: true,
       count: issues.length,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      data: issues
+      data: issues,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Assign or reassign an officer to an issue
+// @desc    Get a single issue for Admin review
+// @route   GET /api/admin/issues/:id
+// @access  Private (Admin)
+exports.getIssueDetails = async (req, res, next) => {
+  try {
+    const issue = await Issue.findById(req.params.id)
+      .populate("category", "name")
+      .populate("reportedBy", "name email")
+      .populate("assignedOfficer", "name department")
+      .populate({
+        path: "statusHistory.changedBy",
+        select: "name role",
+      })
+      .populate({
+        path: "comments",
+        select: "text createdAt",
+        populate: {
+          path: "user",
+          select: "name role",
+        },
+      });
+
+    if (!issue) {
+      return next(
+        new AppError(
+          `No issue found with id ${req.params.id}`,
+          404,
+        ),
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: issue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Assign, reassign, or unassign an officer
 // @route   PATCH /api/admin/issues/:id/assign
 // @access  Private (Admin)
 exports.assignOfficer = async (req, res, next) => {
   try {
     const { officerId } = req.body;
-
-    if (!officerId) {
-      return next(new AppError('Please provide an officer ID', 400));
-    }
 
     const issue = await Issue.findById(req.params.id);
 
@@ -55,26 +92,73 @@ exports.assignOfficer = async (req, res, next) => {
       return next(new AppError(`No issue found with id ${req.params.id}`, 404));
     }
 
-    const previousStatus = issue.status;
-    
-    issue.assignedOfficer = officerId;
-    
-    // Automatically update status if it was unassigned
-    if (['Submitted', 'Under Review'].includes(issue.status)) {
-      issue.status = 'Assigned';
-    }
+    /*
+     * Empty officerId means the admin
+     * intentionally wants to unassign
+     * the issue.
+     */
+    const isUnassigning = !officerId || officerId.trim() === "";
 
-    issue.statusHistory.push({
-      status: issue.status,
-      changedBy: req.user.id,
-      remarks: `Issue assigned/reassigned to officer ID: ${officerId}`
-    });
+    if (isUnassigning) {
+      issue.assignedOfficer = null;
+
+      /*
+       * If the issue was only assigned,
+       * move it back to Submitted.
+       *
+       * Don't overwrite statuses such as
+       * In Progress or Resolved.
+       */
+      if (issue.status === "Assigned") {
+        issue.status = "Submitted";
+      }
+
+      issue.statusHistory.push({
+        status: issue.status,
+        changedBy: req.user.id,
+        remarks: "Issue unassigned from officer",
+      });
+    } else {
+      /*
+       * Make sure the selected user
+       * actually exists and is an Officer.
+       */
+      const officer = await User.findOne({
+        _id: officerId,
+        role: "Officer",
+        isActive: true,
+      });
+
+      if (!officer) {
+        return next(
+          new AppError("Selected officer does not exist or is inactive", 400),
+        );
+      }
+
+      issue.assignedOfficer = officer._id;
+
+      /*
+       * Automatically move newly assigned
+       * issues into Assigned status.
+       */
+      if (["Submitted", "Under Review"].includes(issue.status)) {
+        issue.status = "Assigned";
+      }
+
+      issue.statusHistory.push({
+        status: issue.status,
+        changedBy: req.user.id,
+        remarks: `Issue assigned/reassigned to officer: ${officer.name}`,
+      });
+    }
 
     await issue.save();
 
+    await issue.populate("assignedOfficer", "name department");
+
     res.status(200).json({
       success: true,
-      data: issue
+      data: issue,
     });
   } catch (error) {
     next(error);
@@ -89,13 +173,13 @@ exports.updatePriority = async (req, res, next) => {
     const { priority } = req.body;
 
     if (!priority) {
-      return next(new AppError('Please provide a priority level', 400));
+      return next(new AppError("Please provide a priority level", 400));
     }
 
     const issue = await Issue.findByIdAndUpdate(
-      req.params.id, 
+      req.params.id,
       { priority },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!issue) {
@@ -104,7 +188,7 @@ exports.updatePriority = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: issue
+      data: issue,
     });
   } catch (error) {
     next(error);
@@ -121,27 +205,27 @@ exports.getIssueStats = async (req, res, next) => {
       resolvedIssues,
       totalUsers,
       totalOfficers,
-      criticalIssues
+      criticalIssues,
     ] = await Promise.all([
       Issue.countDocuments(),
 
       Issue.countDocuments({
-        status: 'Resolved'
+        status: "Resolved",
       }),
 
       User.countDocuments(),
 
       User.countDocuments({
-        role: 'Officer'
+        role: "Officer",
       }),
 
       Issue.countDocuments({
-        priority: 'Critical'
-      })
+        priority: "Critical",
+      }),
     ]);
 
     const pendingIssues = await Issue.countDocuments({
-      status: { $ne: 'Resolved' }
+      status: { $ne: "Resolved" },
     });
 
     res.status(200).json({
@@ -152,8 +236,8 @@ exports.getIssueStats = async (req, res, next) => {
         totalIssues,
         pendingIssues,
         resolvedIssues,
-        criticalIssues
-      }
+        criticalIssues,
+      },
     });
   } catch (error) {
     next(error);

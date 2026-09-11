@@ -39,16 +39,14 @@ const issueSchema = new mongoose.Schema(
 
       coordinates: {
         type: [Number],
-        required: [true, 'Please provide coordinates']
+        required: false
       }
     },
 
     address: {
       type: String,
-      required: [
-        true,
-        'Please provide a physical address or landmark'
-      ]
+      trim: true,
+      default: ''
     },
 
     reportedBy: {

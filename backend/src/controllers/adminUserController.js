@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const AppError = require('../utils/AppError');
+const User = require("../models/User");
+const AppError = require("../utils/AppError");
 
 // @desc    Get all users (with filtering)
 // @route   GET /api/admin/users
@@ -17,7 +17,7 @@ exports.getUsers = async (req, res, next) => {
     const users = await User.find(filter)
       .skip(startIndex)
       .limit(limit)
-      .sort('-createdAt');
+      .sort("-createdAt");
 
     const total = await User.countDocuments(filter);
 
@@ -28,9 +28,9 @@ exports.getUsers = async (req, res, next) => {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit),
       },
-      data: users
+      data: users,
     });
   } catch (error) {
     next(error);
@@ -50,48 +50,43 @@ exports.updateUser = async (req, res, next) => {
       return next(new AppError(`No user found with id ${req.params.id}`, 404));
     }
 
-    // Prevent admin from deactivating themselves
+    // Prevent admin from deactivating their own account
     if (req.user.id === user._id.toString() && isActive === false) {
-      return next(new AppError('You cannot deactivate your own admin account', 400));
+      return next(
+        new AppError("You cannot deactivate your own admin account", 400),
+      );
     }
 
-  const updateData = {};
+    const updateData = {};
 
-  if (role !== undefined) {
-    updateData.role = role;
-  }
-
-  if (isActive !== undefined) {
-    updateData.isActive = isActive;
-  }
-
-  if (department !== undefined) {
-    updateData.department = department;
-  }
-
-  const updatedUser = await User.findByIdAndUpdate(
-    req.params.id,
-    updateData,
-    {
-      new: true,
-      runValidators: true
+    if (role !== undefined) {
+      updateData.role = role;
     }
-  );
 
-  if (!updatedUser) {
-    return next(
-      new AppError(`No user found with id ${req.params.id}`, 404)
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+
+    if (department !== undefined) {
+      updateData.department = department;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
     );
-  }
 
-  res.status(200).json({
-    success: true,
-    data: updatedUser
-  });
+    if (!updatedUser) {
+      return next(new AppError(`No user found with id ${req.params.id}`, 404));
+    }
 
     res.status(200).json({
       success: true,
-      data: user
+      data: updatedUser,
     });
   } catch (error) {
     next(error);

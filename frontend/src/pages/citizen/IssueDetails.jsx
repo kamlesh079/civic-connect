@@ -1,65 +1,41 @@
-import { useState, useEffect } from 'react';
-import {
-  useParams,
-  Link
-} from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 
-import {
-  issueService
-} from '../../services/issueService';
+import { issueService } from "../../services/issueService";
 
-import {
-  StatusBadge,
-  PriorityBadge
-} from '../../components/ui/Badges';
+import { StatusBadge, PriorityBadge } from "../../components/ui/Badges";
 
-import {
-  Spinner
-} from '../../components/ui/Spinner';
+import { Spinner } from "../../components/ui/Spinner";
 
-import {
-  MapPin,
-  ArrowLeft,
-  Calendar,
-  User
-} from 'lucide-react';
+import { MapPin, ArrowLeft, Calendar, User } from "lucide-react";
+
+import { IssueLocationMap } from "../../components/map/IssueLocationMap";
+
+import { mapProvider } from "../../components/map/mapProvider";
 
 export const CitizenIssueDetails = () => {
-  const { id } =
-    useParams();
+  const { id } = useParams();
 
-  const [issue, setIssue] =
-    useState(null);
+  const [issue, setIssue] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [error, setError] =
-    useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchIssue =
-      async () => {
-        try {
-          const res =
-            await issueService
-              .getIssueDetails(
-                id
-              );
+    const fetchIssue = async () => {
+      try {
+        const res = await issueService.getIssueDetails(id);
 
-          setIssue(
-            res.data
-          );
-        } catch (err) {
-          setError(
-            'Failed to load issue details. It may have been deleted or you do not have permission to view it.'
-          );
-        } finally {
-          setLoading(
-            false
-          );
-        }
-      };
+        setIssue(res.data);
+      } catch (err) {
+        setError(
+          "Failed to load issue details. It may have been deleted or you do not have permission to view it.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchIssue();
   }, [id]);
@@ -67,10 +43,7 @@ export const CitizenIssueDetails = () => {
   if (loading) {
     return (
       <div className="h-64 flex">
-        <Spinner
-          size={40}
-          className="m-auto"
-        />
+        <Spinner size={40} className="m-auto" />
       </div>
     );
   }
@@ -82,260 +55,195 @@ export const CitizenIssueDetails = () => {
 
         <br />
 
-        <Link
-          to="/citizen/issues"
-          className="underline mt-2 inline-block"
-        >
+        <Link to="/citizen/issues" className="underline mt-2 inline-block">
           Return to Issues
         </Link>
       </div>
     );
   }
 
-  const proofImages =
-    issue.resolutionDetails
-      ?.imageUrls?.length
-      ? issue.resolutionDetails
-          .imageUrls
-      : issue.resolutionDetails
-          ?.imageUrl
-        ? [
-            issue
-              .resolutionDetails
-              .imageUrl
-          ]
-        : [];
+  const proofImages = issue.resolutionDetails?.imageUrls?.length
+    ? issue.resolutionDetails.imageUrls
+    : issue.resolutionDetails?.imageUrl
+      ? [issue.resolutionDetails.imageUrl]
+      : [];
 
   return (
     <div className="space-y-6 max-w-4xl">
-
       <Link
         to="/citizen/issues"
         className="inline-flex items-center text-sm text-gray-500 hover:text-blue-600"
       >
-        <ArrowLeft
-          size={16}
-          className="mr-1"
-        />
-
+        <ArrowLeft size={16} className="mr-1" />
         Back to issues
       </Link>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-
         <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-
           <div>
-
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               {issue.title}
             </h1>
 
             <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600">
-
               <span className="flex items-center">
+                <Calendar size={16} className="mr-1" />
 
-                <Calendar
-                  size={16}
-                  className="mr-1"
-                />
-
-                {new Date(
-                  issue.createdAt
-                ).toLocaleString()}
-
+                {new Date(issue.createdAt).toLocaleString()}
               </span>
 
               <span className="flex items-center">
-
-                <MapPin
-                  size={16}
-                  className="mr-1"
-                />
+                <MapPin size={16} className="mr-1" />
 
                 {issue.address}
-
               </span>
-
             </div>
-
           </div>
 
           <div className="flex gap-2">
+            <PriorityBadge priority={issue.priority} />
 
-            <PriorityBadge
-              priority={
-                issue.priority
-              }
-            />
-
-            <StatusBadge
-              status={
-                issue.status
-              }
-            />
-
+            <StatusBadge status={issue.status} />
           </div>
-
         </div>
 
         <div className="p-6 space-y-6">
-
           <div>
-
             <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">
               Description
             </h3>
+            
+            {issue.location?.coordinates?.length === 2 && (
+              <div className="border-t border-gray-100 pt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase">
+                      Issue Location
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      {issue.address || "Location selected on map"}
+                    </p>
+                  </div>
+
+                  <a
+                    href={mapProvider.getMapUrl(
+                      issue.location.coordinates[1],
+                      issue.location.coordinates[0],
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Open Map
+                  </a>
+                </div>
+
+                <IssueLocationMap
+                  latitude={issue.location.coordinates[1]}
+                  longitude={issue.location.coordinates[0]}
+                  selectable={false}
+                  height="320px"
+                />
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Latitude: {issue.location.coordinates[1].toFixed(6)}
+                  {" · "}
+                  Longitude: {issue.location.coordinates[0].toFixed(6)}
+                </p>
+              </div>
+            )}
 
             <p className="text-gray-800 whitespace-pre-wrap">
-              {
-                issue.description
-              }
+              {issue.description}
             </p>
-
           </div>
 
-          {issue.images?.length >
-            0 && (
+          {issue.images?.length > 0 && (
             <div className="border-t border-gray-100 pt-6">
-
               <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">
                 Issue Photos
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-
-                {issue.images.map(
-                  (
-                    image,
-                    index
-                  ) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`Issue photo ${index + 1}`}
-                      className="aspect-square rounded-lg object-cover border border-gray-200 bg-gray-50"
-                    />
-                  )
-                )}
-
+                {issue.images.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Issue photo ${index + 1}`}
+                    className="aspect-square rounded-lg object-cover border border-gray-200 bg-gray-50"
+                  />
+                ))}
               </div>
-
             </div>
           )}
 
-          {proofImages.length >
-            0 && (
+          {proofImages.length > 0 && (
             <div className="border-t border-gray-100 pt-6">
-
               <h3 className="text-sm font-medium text-green-700 uppercase mb-3">
                 Resolution Proof
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-
-                {proofImages.map(
-                  (
-                    image,
-                    index
-                  ) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`Resolution proof ${index + 1}`}
-                      className="aspect-square rounded-lg object-cover border border-green-200 bg-green-50"
-                    />
-                  )
-                )}
-
+                {proofImages.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Resolution proof ${index + 1}`}
+                    className="aspect-square rounded-lg object-cover border border-green-200 bg-green-50"
+                  />
+                ))}
               </div>
-
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-md">
-
             <div>
-
               <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">
                 Category
               </h3>
 
               <p className="text-gray-900">
-                {
-                  issue.category
-                    ?.name ||
-                  'Uncategorized'
-                }
+                {issue.category?.name || "Uncategorized"}
               </p>
-
             </div>
 
             <div>
-
               <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">
                 Assigned Officer
               </h3>
 
               <p className="text-gray-900 flex items-center">
-
                 {issue.assignedOfficer ? (
                   <>
-                    <User
-                      size={16}
-                      className="mr-1 text-gray-400"
-                    />
+                    <User size={16} className="mr-1 text-gray-400" />
 
-                    {
-                      issue
-                        .assignedOfficer
-                        .name
-                    }
+                    {issue.assignedOfficer.name}
                   </>
                 ) : (
-                  'Unassigned'
+                  "Unassigned"
                 )}
-
               </p>
-
             </div>
-
           </div>
 
-          {issue.resolutionDetails
-            ?.resolvedAt && (
+          {issue.resolutionDetails?.resolvedAt && (
             <div className="bg-green-50 p-4 rounded-md border border-green-100">
-
               <h3 className="text-sm font-medium text-green-800 uppercase mb-2">
                 Resolution Details
               </h3>
 
               <p className="text-green-900 text-sm mb-2">
-                {
-                  issue
-                    .resolutionDetails
-                    .remarks
-                }
+                {issue.resolutionDetails.remarks}
               </p>
 
               <p className="text-xs text-green-700">
-
-                Resolved on:
-                {' '}
-
-                {new Date(
-                  issue
-                    .resolutionDetails
-                    .resolvedAt
-                ).toLocaleString()}
-
+                Resolved on:{" "}
+                {new Date(issue.resolutionDetails.resolvedAt).toLocaleString()}
               </p>
-
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   );
