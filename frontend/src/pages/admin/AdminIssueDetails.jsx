@@ -24,6 +24,10 @@ const AdminIssueDetails = () => {
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [status, setStatus] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
   useEffect(() => {
     const fetchIssue = async () => {
       try {
@@ -38,6 +42,45 @@ const AdminIssueDetails = () => {
 
     fetchIssue();
   }, [id]);
+
+  const handleStatusUpdate = async (event, statusOverride = null) => {
+    event.preventDefault();
+
+    const selectedStatus = statusOverride || status;
+
+    if (!selectedStatus) {
+      toast.error("Please select a status");
+      return;
+    }
+
+    if (selectedStatus === "Rejected" && !remarks.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+
+      const res = await adminService.updateIssueStatus(
+        id,
+        selectedStatus,
+        remarks,
+      );
+
+      setIssue(res.data);
+
+      setStatus("");
+      setRemarks("");
+
+      toast.success(`Issue marked as ${res.data.status}`);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to update issue status",
+      );
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -391,6 +434,193 @@ const AdminIssueDetails = () => {
             ) : (
               <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 text-sm text-gray-500">
                 No status history is available for this issue.
+              </div>
+            )}
+          </section>
+
+          {/* Admin Actions */}
+          <section className="border border-gray-200 rounded-lg p-6 bg-white">
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Admin Actions</h2>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Review the submitted report and evidence before taking an
+                action.
+              </p>
+            </div>
+
+            {/* Current status */}
+            <div className="mb-5 p-4 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-gray-600">
+                  Current Status:
+                </span>
+
+                <StatusBadge status={issue.status} />
+              </div>
+            </div>
+
+            {/* Submitted → Under Review / Rejected */}
+            {issue.status === "Submitted" && (
+              <form onSubmit={handleStatusUpdate} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="admin-status"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Admin Decision
+                  </label>
+
+                  <select
+                    id="admin-status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  >
+                    <option value="">Select an action</option>
+
+                    <option value="Under Review">Mark Under Review</option>
+
+                    <option value="Rejected">Reject Issue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="admin-remarks"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Remarks
+                  </label>
+
+                  <textarea
+                    id="admin-remarks"
+                    rows={4}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder={
+                      status === "Rejected"
+                        ? "Explain why this issue is being rejected..."
+                        : "Add review remarks..."
+                    }
+                    required={status === "Rejected"}
+                    className="w-full border border-gray-300 rounded-md p-2 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isUpdating || !status}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUpdating ? "Updating..." : "Update Issue Status"}
+                </button>
+              </form>
+            )}
+
+            {/* Under Review → Reject */}
+            {issue.status === "Under Review" && (
+              <form onSubmit={handleStatusUpdate} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="review-status"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Review Decision
+                  </label>
+
+                  <select
+                    id="review-status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  >
+                    <option value="">Select an action</option>
+
+                    <option value="Rejected">Reject Issue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="review-remarks"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Review Remarks
+                  </label>
+
+                  <textarea
+                    id="review-remarks"
+                    rows={4}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Explain your decision..."
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isUpdating || !status}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUpdating ? "Updating..." : "Reject Issue"}
+                </button>
+              </form>
+            )}
+
+            {/* Resolved → Reopen */}
+            {issue.status === "Resolved" && (
+              <form
+                onSubmit={(event) => handleStatusUpdate(event, "Reopened")}
+                className="space-y-4"
+              >
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    Reopen this issue if the reported problem still exists or
+                    the resolution is not satisfactory.
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="reopen-remarks"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Reopen Remarks
+                  </label>
+
+                  <textarea
+                    id="reopen-remarks"
+                    rows={3}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Explain why this issue needs to be reopened..."
+                    required
+                    className="w-full border border-gray-300 rounded-md p-2 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="w-full px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUpdating ? "Reopening..." : "Reopen Issue"}
+                </button>
+              </form>
+            )}
+
+            {/* No action */}
+            {["Assigned", "In Progress", "Rejected", "Reopened"].includes(
+              issue.status,
+            ) && (
+              <div className="p-4 bg-gray-50 border border-gray-100 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  No Admin status decision is available for the current issue
+                  status.
+                </p>
               </div>
             )}
           </section>

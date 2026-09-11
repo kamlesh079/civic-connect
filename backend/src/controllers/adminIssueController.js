@@ -39,6 +39,7 @@ exports.getAllIssues = async (req, res, next) => {
   }
 };
 
+
 // @desc    Get a single issue for Admin review
 // @route   GET /api/admin/issues/:id
 // @access  Private (Admin)
@@ -72,6 +73,125 @@ exports.getIssueDetails = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      data: issue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update issue status as Admin
+// @route   PATCH /api/admin/issues/:id/status
+// @access  Private (Admin)
+exports.updateIssueStatus = async (req, res, next) => {
+  try {
+    const { status, remarks } = req.body;
+
+    if (!status) {
+      return next(
+        new AppError("Please provide a new status", 400)
+      );
+    }
+
+    const allowedStatuses = [
+      "Under Review",
+      "Rejected",
+      "Reopened",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return next(
+        new AppError(
+          "Invalid Admin status update",
+          400
+        )
+      );
+    }
+
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) {
+      return next(
+        new AppError(
+          `No issue found with id ${req.params.id}`,
+          404
+        )
+      );
+    }
+
+    // Submitted → Under Review
+    if (status === "Under Review") {
+      if (issue.status !== "Submitted") {
+        return next(
+          new AppError(
+            `An issue with status "${issue.status}" cannot be moved to Under Review`,
+            400
+          )
+        );
+      }
+    }
+
+    // Submitted / Under Review → Rejected
+    if (status === "Rejected") {
+      if (!["Submitted", "Under Review"].includes(issue.status)) {
+        return next(
+          new AppError(
+            `An issue with status "${issue.status}" cannot be rejected`,
+            400
+          )
+        );
+      }
+
+      if (!remarks || !remarks.trim()) {
+        return next(
+          new AppError(
+            "A rejection reason is required",
+            400
+          )
+        );
+      }
+
+      // A rejected issue should not remain assigned.
+      issue.assignedOfficer = null;
+    }
+
+    // Resolved → Reopened
+    if (status === "Reopened") {
+      if (issue.status !== "Resolved") {
+        return next(
+          new AppError(
+            `Only resolved issues can be reopened. Current status: ${issue.status}`,
+            400
+          )
+        );
+      }
+
+      // Admin will review/reassign it again.
+      issue.assignedOfficer = null;
+    }
+
+    issue.status = status;
+
+    issue.statusHistory.push({
+      status,
+      changedBy: req.user.id,
+      remarks:
+        remarks?.trim() ||
+        `Status changed to ${status} by Admin`,
+    });
+
+    await issue.save();
+
+    await issue.populate("category", "name");
+    await issue.populate("reportedBy", "name email");
+    await issue.populate(
+      "assignedOfficer",
+      "name department"
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Issue status updated to ${status}`,
       data: issue,
     });
   } catch (error) {

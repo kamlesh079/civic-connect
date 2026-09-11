@@ -23,6 +23,13 @@ export const adminService = {
     const { data } = await api.get(`/admin/issues/${id}`);
     return data;
   },
+  updateIssueStatus: async (id, status, remarks = "") => {
+    const { data } = await api.patch(`/admin/issues/${id}/status`, {
+      status,
+      remarks,
+    });
+    return data;
+  },
 
   updatePriority: async (id, priority) => {
     const { data } = await api.patch(`/admin/issues/${id}/priority`, {
